@@ -197,6 +197,73 @@ def analyze_hashtags(df):
     return hashtag_counts
 
 
+def analyze_entity_pairs(df):
+    """
+    Analyzes the 'entities' object in the 'json' column of a DataFrame and returns
+    a dictionary with tuple keys representing entity pairs and their occurrence counts.
+    
+    Parameters:
+        df (pandas.DataFrame): DataFrame with a 'json' column containing JSON strings.
+        
+    Returns:
+        dict: Dictionary with tuple keys (entity_name1, entity_name2) and values as counts.
+    """
+    # Initialize a dictionary to store entity pair counts
+    entity_pair_counts = {}
+    
+    # Iterate through the 'json' column
+    for json_str in df['json']:
+        try:
+            # Parse the JSON string
+            json_data = json.loads(str(json_str))
+            # Get the entities dictionary
+            entities = json_data.get('entities', {})
+            
+            # Skip if entities is not a dict or is empty
+            if not isinstance(entities, dict) or len(entities) < 2:
+                continue
+            
+            # Get all entity keys from the dictionary
+            entity_keys = list(entities.keys())
+            
+            # Generate all possible pairs of entities
+            for i in range(len(entity_keys)):
+                for j in range(i + 1, len(entity_keys)):
+                    # Create a tuple with the two entity names (sorted to ensure consistency)
+                    entity_pair = tuple(sorted([entity_keys[i], entity_keys[j]]))
+                    # Update the count in the dictionary
+                    entity_pair_counts[entity_pair] = entity_pair_counts.get(entity_pair, 0) + 1
+                    
+        except json.JSONDecodeError:
+            # Handle invalid JSON gracefully
+            continue
+    
+    return entity_pair_counts
+
+
+def extract_unique_entities_from_pairs(entity_pairs_dict):
+    """
+    Extracts unique entities from a dictionary with tuple keys and returns their counts.
+    
+    Parameters:
+        entity_pairs_dict (dict): Dictionary with tuple keys (entity1, entity2) and values as counts.
+        
+    Returns:
+        dict: Dictionary with unique entity names as keys and their total counts as values.
+    """
+    # Initialize a dictionary to store unique entity counts
+    unique_entities_count = {}
+    
+    # Iterate through each pair and count individual entities
+    for (entity1, entity2), count in entity_pairs_dict.items():
+        # Add count for entity1
+        unique_entities_count[entity1] = unique_entities_count.get(entity1, 0) + count
+        # Add count for entity2
+        unique_entities_count[entity2] = unique_entities_count.get(entity2, 0) + count
+    
+    return sort_dictionary_by_values(unique_entities_count)
+
+
 
 
 
@@ -204,11 +271,12 @@ def analyze_hashtags(df):
 if __name__ == "__main__":
     # Read the CSV file into a pandas DataFrame
     df = pd.read_csv('telegram_messages.csv')
-
+    
     content_type_counts = sort_dictionary_by_values(analyze_content_type(df))
     print("Count of analyzed news: ", sum_dictionary_values(content_type_counts))
     print("Type of News: ", content_type_counts)
 
+    print("\n\n--------------------------------\n\n")
     entity_key_counts, unique_values_count = analyze_entities(df)
 
     entity_key_counts = sort_dictionary_by_values(entity_key_counts)
@@ -219,11 +287,29 @@ if __name__ == "__main__":
     print("Count Entities that have more than 2 value: ", len(entity_key_counts_greater2))
     print("Entities and Count: ", entity_key_counts_greater2)
 
+    print("\n\n--------------------------------\n\n")
+
     hashtags_counts = sort_dictionary_by_values(analyze_hashtags(df))
     print("Length of Hashtags: ", len(hashtags_counts))
     hashtags_counts_greater10 = {k: v for k, v in hashtags_counts.items() if isinstance(v, (int, float)) and v > 10}
     print("Hashtags that have more than 1 value: ", len(hashtags_counts_greater10))
     print("Hashtags: ", hashtags_counts_greater10)
+
+    print("\n\n--------------------------------\n\n")
+
+    pair_entitis_count = sort_dictionary_by_values(analyze_entity_pairs(df))
+    print("Number of Pair Entities: ", len(pair_entitis_count))
+    pair_entitis_count_greater10 = {k: v for k, v in pair_entitis_count.items() if isinstance(v, (int, float)) and v > 10}
+    print("Number of Pair Entities that have more than 10 value: ", len(pair_entitis_count_greater10))
+    print("Pair Entities that have more than 10 value: ", pair_entitis_count_greater10)
+
+    print("\n\n--------------------------------\n\n")
+    
+    unique_entities_from_pairs = extract_unique_entities_from_pairs(pair_entitis_count_greater10)
+    print("Number of most important entities: ", len(unique_entities_from_pairs))
+    print("Most important Entities: ", unique_entities_from_pairs)
+
+
 
 
 
