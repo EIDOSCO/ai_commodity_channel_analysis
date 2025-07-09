@@ -1,0 +1,9 @@
+__pycache__
+.venv
+source/css
+source/images
+source/js
+.cursorignore
+.env
+*.csv
+
